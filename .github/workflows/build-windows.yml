@@ -1,0 +1,27 @@
+name: Build CargoOptimizer (Windows)
+
+on:
+  push:
+    tags:
+      - "v*"
+  workflow_dispatch:
+
+jobs:
+  windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - uses: dtolnay/rust-toolchain@stable
+      - run: npm install
+      - run: npx tauri build --target x86_64-pc-windows-msvc --bundles nsis,msi
+      - uses: actions/upload-artifact@v4
+        with:
+          name: CargoOptimizer-Windows
+          path: src-tauri/target/x86_64-pc-windows-msvc/release/bundle/**/*
+      - if: startsWith(github.ref, 'refs/tags/')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: src-tauri/target/x86_64-pc-windows-msvc/release/bundle/**/*

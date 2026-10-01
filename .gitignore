@@ -7,3 +7,9 @@ data/cache/
 *~
 .vscode/
 .idea/
+src-tauri/target/
+*.app
+*.deb
+.env
+!dist-web/
+!dist-web/**
