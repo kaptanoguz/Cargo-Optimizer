@@ -1,0 +1,203 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="auto">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cargo Optimizer Ada</title>
+    <meta name="description" content="Chemical tanker stowage planner for M/T ADA — optimised tank allocation, IBC / USCG compatibility, filling limits and deadweight.">
+    <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Cpath d='M4 12h20l4 4-4 4H4z' fill='%2338bdf8'/%3E%3C/svg%3E">
+    <link rel="stylesheet" href="css/app.css">
+</head>
+<body>
+<div id="app">
+
+    <!-- ═════════ Top bar ═════════ -->
+    <header class="topbar">
+        <div class="brand">
+            <svg class="brand-mark" viewBox="0 0 48 20" aria-hidden="true">
+                <path d="M1 2h36c5 0 9 4 10 8-1 4-5 8-10 8H1z" fill="none" stroke="currentColor" stroke-width="1.6"/>
+                <path d="M1 10h46" stroke="currentColor" stroke-width=".8" stroke-dasharray="5 1.5 1 1.5"/>
+                <path d="M9 2v16M17 2v16M25 2v16M33 2v16" stroke="currentColor" stroke-width=".8"/>
+            </svg>
+            <div>
+                <div class="brand-title">M/T ADA <span>/</span> Cargo stowage plan</div>
+                <div class="brand-sub">IMO 9420693 · IBC TYPE 2 · 12 COT · MARINE-LINE · Cargo Optimizer</div>
+            </div>
+        </div>
+
+        <div class="voyage">
+            <label class="field-inline">Voy <input id="voyNo" class="inp inp-sm" placeholder="V-001" maxlength="16"></label>
+            <div class="seg" id="zoneSeg" role="radiogroup" aria-label="Load line zone">
+                <button data-zone="T" title="Tropical">T</button>
+                <button data-zone="S" title="Summer">S</button>
+                <button data-zone="W" title="Winter">W</button>
+            </div>
+            <label class="field-inline" title="Draft-restricted deadweight at load/disch port (optional)">
+                Max DWT <input id="dwtRestrict" class="inp inp-sm num" type="number" step="1" placeholder="—">
+            </label>
+        </div>
+
+        <div class="actions">
+            <button class="btn btn-primary" id="btnOptimize" title="Optimise stowage (locked tanks are kept)">
+                Optimise
+            </button>
+            <button class="btn btn-icon" id="btnUndo" title="Undo (Ctrl+Z)"><svg viewBox="0 0 24 24"><path d="M9 14 4 9l5-5M4 9h11a5 5 0 0 1 0 10h-3"/></svg></button>
+            <button class="btn btn-icon" id="btnRedo" title="Redo (Ctrl+Y)"><svg viewBox="0 0 24 24"><path d="m15 14 5-5-5-5M20 9H9a5 5 0 0 0 0 10h3"/></svg></button>
+            <span class="sep"></span>
+            <button class="btn btn-icon" id="btnSave" title="Save plan (.json)"><svg viewBox="0 0 24 24"><path d="M5 3h11l3 3v15H5zM8 3v6h8V3M8 21v-7h8v7"/></svg></button>
+            <button class="btn btn-icon" id="btnOpen" title="Open plan (.json)"><svg viewBox="0 0 24 24"><path d="M3 7h6l2 2h10v10H3zM3 7V5h6"/></svg></button>
+            <button class="btn btn-icon" id="btnPrint" title="Print stowage plan / PDF"><svg viewBox="0 0 24 24"><path d="M6 9V3h12v6M6 18H4v-7h16v7h-2M7 14h10v7H7z"/></svg></button>
+            <button class="btn btn-icon" id="btnCsv" title="Export CSV (Excel)"><svg viewBox="0 0 24 24"><path d="M4 4h16v16H4zM4 10h16M4 15h16M10 4v16"/></svg></button>
+            <button class="btn btn-icon" id="btnSettings" title="Settings & theme"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg></button>
+            <input type="file" id="fileOpen" accept=".json,application/json" hidden>
+        </div>
+    </header>
+
+    <!-- ═════════ KPI strip ═════════ -->
+    <section class="kpis" id="kpis" aria-label="Plan summary"></section>
+
+    <main class="layout">
+        <!-- ═════════ Left column: parcels ═════════ -->
+        <aside class="col-left">
+            <section class="panel" id="parcelPanel">
+                <div class="panel-head">
+                    <h2><span class="n">01</span><span id="formTitle">Add parcel</span></h2>
+                    <button class="btn btn-ghost btn-xs" id="btnCancelEdit" hidden>Cancel</button>
+                </div>
+                <form id="parcelForm" class="pform" autocomplete="off" novalidate>
+                    <div class="f f-no"><label for="fNo">Parcel</label><input id="fNo" class="inp" placeholder="P-01"></div>
+                    <div class="f f-name ac-host">
+                        <label for="fName">Product</label>
+                        <input id="fName" class="inp" placeholder="Type name or code (MEG, IPA, NaOH…)" required>
+                    </div>
+                    <div class="f f-info" id="fInfo"></div>
+
+                    <div class="f f-qty">
+                        <label for="fQty">Quantity</label>
+                        <div class="inp-group">
+                            <input id="fQty" class="inp num" type="number" step="0.001" min="0" placeholder="1000" required>
+                            <select id="fQtyUnit" class="inp inp-unit"><option value="t">t</option><option value="m3">m³</option></select>
+                        </div>
+                    </div>
+                    <div class="f f-sg">
+                        <label for="fSG">Density / SG</label>
+                        <div class="inp-group">
+                            <input id="fSG" class="inp num" type="number" step="0.0001" min="0.3" max="2.5" placeholder="0.000" required>
+                            <select id="fRef" class="inp inp-unit" title="Reference temperature"><option value="15">@15°</option><option value="20">@20°</option></select>
+                        </div>
+                    </div>
+                    <div class="f f-lt"><label for="fLoadT">Load temp °C</label><input id="fLoadT" class="inp num" type="number" step="0.1" placeholder="ref"></div>
+                    <div class="f f-vt"><label for="fVoyT" title="Highest temperature on passage — drives the thermal filling limit">Max on passage °C</label><input id="fVoyT" class="inp num" type="number" step="0.1" placeholder="= load"></div>
+                    <div class="f f-lp ac-host"><label for="fLoadPort">Load port</label><input id="fLoadPort" class="inp" placeholder="Port"></div>
+                    <div class="f f-dp ac-host"><label for="fDischPort">Disch port</label><input id="fDischPort" class="inp" placeholder="Port"></div>
+
+                    <details class="f f-adv" id="fAdv">
+                        <summary>Product data &amp; stowage</summary>
+                        <div class="adv-grid">
+                            <div class="f"><label for="fGroup">Class</label>
+                                <select id="fGroup" class="inp"><option value="C">Chemical</option><option value="P">Petroleum (Annex I)</option><option value="V">Veg oil / fat</option></select></div>
+                            <div class="f"><label for="fRG">USCG reactive group</label><select id="fRG" class="inp"></select></div>
+                            <div class="f"><label for="fVcf" title="Volume correction: ASTM 54B petroleum products, ASTM 54D lub / base oils, or product expansion coefficient β">VCF method</label>
+                                <select id="fVcf" class="inp"><option value="54B">ASTM Table 54B</option><option value="54D">ASTM Table 54D</option><option value="beta">Coefficient β</option></select></div>
+                            <div class="f"><label for="fBeta" title="Cubic expansion coefficient per °C (only for VCF method β)">Expansion β /°C</label><input id="fBeta" class="inp num" type="number" step="0.00001" placeholder="—"></div>
+                            <div class="f"><label for="fMaxT" title="Heat-sensitive: no heated cargo above this next to it">Heat-sens. max °C</label><input id="fMaxT" class="inp num" type="number" step="1" placeholder="—"></div>
+                            <div class="f"><label for="fHeatMin">Heating band °C</label>
+                                <div class="inp-group"><input id="fHeatMin" class="inp num" type="number" step="1" placeholder="min"><input id="fHeatMax" class="inp num" type="number" step="1" placeholder="max"></div></div>
+                            <div class="f"><label for="fStrategy">Tank fill</label>
+                                <select id="fStrategy" class="inp"><option value="BALANCED">Even % in all tanks</option><option value="CONSOLIDATED">Full pairs + one slack pair</option></select></div>
+                        </div>
+                    </details>
+
+                    <div class="f f-preview" id="fPreview"></div>
+                    <div class="f f-submit"><button class="btn btn-primary btn-block" id="btnSubmit" type="submit">Add parcel</button></div>
+                </form>
+            </section>
+
+            <section class="panel">
+                <div class="panel-head">
+                    <h2><span class="n">02</span>Manifest</h2>
+                    <span class="chip" id="parcelCount">0</span>
+                </div>
+                <div id="parcelList" class="parcel-list"></div>
+            </section>
+        </aside>
+
+        <!-- ═════════ Main column ═════════ -->
+        <section class="col-main">
+            <section class="panel ship-panel">
+                <div class="panel-head">
+                    <h2><span class="n">03</span>Stowage plan</h2>
+                    <div class="ship-tools">
+                        <div class="seg seg-sm" id="unitSeg" aria-label="Tank figure">
+                            <button data-unit="pct">%</button><button data-unit="t">t</button><button data-unit="m3">m³</button>
+                        </div>
+                        <label class="toggle" title="When you change one tank, the difference is moved to the other tanks of the same parcel so the nominated quantity stays the same">
+                            <input type="checkbox" id="tglRebalance"><span></span>Keep parcel totals
+                        </label>
+                        <button class="btn btn-ghost btn-xs" id="btnClearUnlocked" title="Empty all unlocked tanks">Clear unlocked</button>
+                    </div>
+                </div>
+                <div class="ship-wrap"><div class="ship" id="ship"></div></div>
+                <div class="ship-hint">Drag a parcel onto a tank to load it · drag tank onto tank to move / swap · click a tank to set exact %, m³ or t · <kbd>Esc</kbd> closes the editor · bar under each tank: fill vs. limit (orange tick)</div>
+            </section>
+
+            <section class="panel">
+                <div class="panel-head">
+                    <h2><span class="n">04</span>Tank table</h2>
+                    <span class="muted small">Edit any cell — values are linked (%, m³ at load temp, tonnes)</span>
+                </div>
+                <div class="table-wrap"><table class="grid" id="tankTable"></table></div>
+            </section>
+
+            <div class="split">
+                <section class="panel">
+                    <div class="panel-head"><h2><span class="n">05</span>Deadweight</h2><span class="chip" id="zoneChip">Summer</span></div>
+                    <div id="dwtPanel"></div>
+                </section>
+                <section class="panel">
+                    <div class="panel-head"><h2><span class="n">06</span>Checks</h2><span class="mk" id="compChip">—</span></div>
+                    <div id="findings" class="findings"></div>
+                </section>
+            </div>
+        </section>
+    </main>
+
+    <!-- ═════════ Tank editor drawer ═════════ -->
+    <aside class="drawer" id="drawer" aria-hidden="true" aria-label="Tank editor"></aside>
+
+    <!-- ═════════ Settings ═════════ -->
+    <dialog id="settingsDlg" class="dlg">
+        <form method="dialog" class="dlg-body">
+            <div class="panel-head"><h2>Settings</h2><button class="btn btn-icon" value="close" aria-label="Close"><svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6 6 18"/></svg></button></div>
+            <div class="f"><label>Theme</label><div class="theme-grid" id="themeGrid"></div></div>
+            <div class="set-grid">
+                <div class="f"><label for="sBasis">Weight basis</label>
+                    <select id="sBasis" class="inp"><option value="vac">In vacuum (density)</option><option value="air">In air (WCF −0.0011)</option></select></div>
+                <div class="f"><label for="sList">List limit (P/S Δ, t)</label><input id="sList" class="inp num" type="number" step="5" min="0"></div>
+                <div class="f"><label for="sMaxFill">Max fill %</label><input id="sMaxFill" class="inp num" type="number" step="0.5" min="80" max="98"></div>
+                <div class="f"><label for="sSgLim">SG allowed at max fill</label><input id="sSgLim" class="inp num" type="number" step="0.01" min="1" max="2"></div>
+                <div class="f"><label for="sSlack" title="Optimiser avoids tanks filled below this % (free-surface effect, sloshing). One tank at 70 % is preferred over two at 35 %.">Avoid slack tanks below %</label><input id="sSlack" class="inp num" type="number" step="5" min="0" max="95"></div>
+                <label class="toggle"><input type="checkbox" id="sSlops"><span></span>Use slop tanks for cargo</label>
+            </div>
+            <p class="muted small">Filling limit per parcel = lower of 98 % × ρ(max passage temp) / ρ(load temp) and 98 % × 1.54 / ρ. Compatibility uses a conservative built-in USCG 46 CFR 150 chart — always verify with the ship's Certificate of Fitness, the IBC Code and charterer's instructions.</p>
+            <div class="dlg-foot">
+                <button class="btn btn-danger btn-ghost" id="btnResetAll" value="cancel" type="button">Reset everything</button>
+                <button class="btn btn-primary" value="close">Done</button>
+            </div>
+        </form>
+    </dialog>
+
+    <div class="toasts" id="toasts" aria-live="polite"></div>
+</div>
+
+<div id="printArea"></div>
+
+<script src="js/vessel.js"></script>
+<script src="js/cargo-db.js"></script>
+<script src="js/physics.js"></script>
+<script src="js/compat.js"></script>
+<script src="js/optimizer.js"></script>
+<script src="js/planner.js"></script>
+<script src="js/app.js"></script>
+</body>
+</html>
