@@ -1,6 +1,6 @@
-# Cargo Optimizer Ada — Pro
+# Cargo Optimizer
 
-M/T ADA (IMO 9420693, IBC ship type 2, 12 cargo tanks) için kimyasal tanker stowage planlayıcısı.
+M/T X (IMO 9000001, IBC ship type 2, 12 cargo tanks) için kimyasal tanker stowage planlayıcısı.
 Kurulum gerekmez, internet gerekmez: `index.html` dosyasını tarayıcıda açın.
 
 ## Optimizasyon hedefi (öncelik sırasıyla)
