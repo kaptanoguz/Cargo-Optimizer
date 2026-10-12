@@ -5,8 +5,8 @@
   "identifier": "com.kaptanoguz.cargooptimizer",
   "build": {
     "frontendDist": "../dist-web",
-    "devUrl": "http://localhost:1420",
-    "beforeDevCommand": "echo noop"
+    "beforeDevCommand": "npm run build:web",
+    "beforeBuildCommand": "npm run build:web"
   },
   "app": {
     "windows": [

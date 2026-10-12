@@ -11,5 +11,4 @@ src-tauri/target/
 *.app
 *.deb
 .env
-!dist-web/
-!dist-web/**
+dist-web/

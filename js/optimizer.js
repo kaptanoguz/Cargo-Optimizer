@@ -71,7 +71,7 @@
     }
 
     function buildCandidates(cargo, tanks, slackPct) {
-        const thr = slackPct || DEFAULT_SLACK_PCT;
+        const thr = slackPct ?? DEFAULT_SLACK_PCT;
         const n = tanks.length;
         const full = (1 << n) - 1;
         const need = cargo.need;
@@ -132,6 +132,7 @@
      *   cargoes: [{ id, need, capVol[], capMass[], allowedMask, strategy }],
      *   conflict(idA, idB) → bool,
      *   fixed: [{ idx, cargoId, mass }],  // locked tanks
+     *   baseImb,                         // P−S tonnes not from cargo (ballast)
      *   listLimit, timeMs
      * }
      */
@@ -139,8 +140,8 @@
         const t0 = Date.now();
         const tanks = input.tanks;
         const timeMs = input.timeMs || 1200;
-        const listLimit = input.listAllowance || input.listLimit || 150;
-        const slackPct = input.slackPct || DEFAULT_SLACK_PCT;
+        const listLimit = input.listAllowance ?? input.listLimit ?? 150;
+        const slackPct = input.slackPct ?? DEFAULT_SLACK_PCT;
         // Most-constrained parcel first: number of incompatible partners, then volume.
         const live = input.cargoes.filter(c => c.need > 0.01);
         const degree = c => live.filter(o => o !== c && input.conflict(c.id, o.id)).length +
@@ -149,7 +150,8 @@
         const cargoes = live.sort((a, b) => (b.degree - a.degree) || ((b.need / b.mpm) - (a.need / a.mpm)));
         const cf = cargoes.map(a => cargoes.map(b => a !== b && !!input.conflict(a.id, b.id)));
 
-        let fixedMask = 0, fixedImb = 0;
+        // P−S moment (t) already on board that the plan must live with, e.g. uneven ballast
+        let fixedMask = 0, fixedImb = input.baseImb || 0;
         const fixedOcc = new Array(tanks.length).fill(null);
         const fixedImbBy = new Map();
         (input.fixed || []).forEach(f => {
@@ -273,6 +275,7 @@
         const passes = ['waste', 'pairs'];
         let passStart = t0;
         const passOf = {};
+        let anyTimedOut = false;
         passes.forEach((pass, pi) => {
             cargoes.forEach(c => { c.cand.list = c.cand.lists[pass]; });
             timedOut = false;
@@ -282,9 +285,10 @@
             const before = best;
             dfs(0, fixedMask, new Array(cargoes.length).fill(0), 0);
             if (best !== before) passOf.win = pass;
+            anyTimedOut = anyTimedOut || timedOut;
         });
 
-        const result = { assignments: {}, unplaced: {}, nodes, ms: Date.now() - t0, timedOut, score: best ? best.score : 0 };
+        const result = { assignments: {}, unplaced: {}, nodes, ms: Date.now() - t0, timedOut: anyTimedOut, score: best ? best.score : 0 };
         if (best) {
             cargoes.forEach((c, k) => {
                 const d = best.dist[k];

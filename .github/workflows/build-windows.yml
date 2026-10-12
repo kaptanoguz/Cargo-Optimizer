@@ -16,6 +16,7 @@ jobs:
           node-version: 22
       - uses: dtolnay/rust-toolchain@stable
       - run: npm install
+      - run: npm test
       - run: npx tauri build --target x86_64-pc-windows-msvc --bundles nsis,msi
       - uses: actions/upload-artifact@v4
         with:

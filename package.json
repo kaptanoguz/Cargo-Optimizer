@@ -1,11 +1,15 @@
 {
-  "name": "ada-translate",
+  "name": "cargo-optimizer",
   "private": true,
   "version": "1.0.0",
   "scripts": {
-    "tauri": "tauri"
+    "build:web": "node scripts/build-web.js",
+    "test": "node tests/run-tests.js",
+    "tauri": "tauri",
+    "test:ui": "node tests/ui-smoke.js"
   },
   "devDependencies": {
-    "@tauri-apps/cli": "^2.11.4"
+    "@tauri-apps/cli": "^2.11.4",
+    "playwright-core": "^1.64.0"
   }
 }

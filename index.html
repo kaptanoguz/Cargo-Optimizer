@@ -179,7 +179,7 @@
                 <div class="f"><label for="sSlack" title="Optimiser avoids tanks filled below this % (free-surface effect, sloshing). One tank at 70 % is preferred over two at 35 %.">Avoid slack tanks below %</label><input id="sSlack" class="inp num" type="number" step="5" min="0" max="95"></div>
                 <label class="toggle"><input type="checkbox" id="sSlops"><span></span>Use slop tanks for cargo</label>
             </div>
-            <p class="muted small">Filling limit per parcel = lower of 98 % × ρ(max passage temp) / ρ(load temp) and 98 % × 1.54 / ρ. Compatibility uses a conservative built-in USCG 46 CFR 150 chart — always verify with the ship's Certificate of Fitness, the IBC Code and charterer's instructions.</p>
+            <p class="muted small">Filling limit per parcel = lower of 98 % × ρ(max passage temp) / ρ(load temp) and 98 % × 1.54 / ρ. Compatibility uses the USCG 46 CFR 150 Figure 1 chart by reactive group; pairs with listed exceptions are flagged for checking — always verify with the ship's Certificate of Fitness, the IBC Code and charterer's instructions.</p>
             <div class="dlg-foot">
                 <button class="btn btn-danger btn-ghost" id="btnResetAll" value="cancel" type="button">Reset everything</button>
                 <button class="btn btn-primary" value="close">Done</button>

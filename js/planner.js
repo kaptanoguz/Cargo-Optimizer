@@ -160,6 +160,8 @@
                 seen.add(key);
                 const cf = conflict(r.c.id, o.c.id);
                 if (cf) out.push({ level: 'danger', code: cf.code === 'HEAT' ? 'Heat transfer' : 'Segregation', msg: `${r.t.short} ↔ ${o.t.short}: ${cf.msg}`, tanks: [r.t.id, nid] });
+                const ca = !cf && Compat.pairCaution(r.c, o.c);
+                if (ca) out.push({ level: 'warn', code: 'Check exceptions', msg: `${r.t.short} ↔ ${o.t.short}: ${ca.msg}`, tanks: [r.t.id, nid] });
             });
             if (r.over) out.push({ level: 'danger', code: 'Overfill', msg: `${r.t.name} ${r.pct.toFixed(1)} % exceeds the ${r.limitPct.toFixed(1)} % limit for ${r.c.name}`, tanks: [r.t.id] });
         });
@@ -217,6 +219,40 @@
         return Math.min(free('P'), free('S'));
     }
 
+    /** Port minus starboard ballast mass (t); FPT is on the centreline. */
+    function ballastImbalance(state) {
+        return BALLAST_TANKS.reduce((s, b) => {
+            const m = b.cap * (parseFloat(state.ballast[b.id]) || 0) / 100 * SW_DENSITY;
+            return s + (b.side === 'P' ? m : b.side === 'S' ? -m : 0);
+        }, 0);
+    }
+
+    /** Tonnes by which stowing `cargoes` (on top of `fixed` tanks) would exceed the deadweight limit. */
+    function dwtExcess(state, cargoes, fixed) {
+        const T = summarize(state).totals;
+        const fixedMass = fixed.reduce((s, f) => s + f.mass, 0);
+        const room = Math.max(0, T.limit - T.consumables - T.ballastMass - fixedMass);
+        const total = cargoes.reduce((s, c) => s + c.need, 0);
+        return { room, total, excess: Math.max(0, total - room) };
+    }
+
+    /** Excess over deadweight if every parcel were optimised as nominated (locked tanks kept). */
+    function optimizeDwtExcess(state, opts) {
+        const only = opts && opts.only;
+        const isFixed = e => e.locked || (only && !only.includes(e.cargoId));
+        const fixed = [], lockedMass = {};
+        Object.values(state.plan).forEach(e => {
+            const c = isFixed(e) && cargoById(state, e.cargoId);
+            if (!c) return;
+            const mass = e.vol * prep(state, c).mpm;
+            fixed.push({ mass });
+            lockedMass[c.id] = (lockedMass[c.id] || 0) + mass;
+        });
+        const cargoes = state.cargoes.filter(c => !only || only.includes(c.id))
+            .map(c => ({ need: Math.max(0, c.qty - (lockedMass[c.id] || 0)) }));
+        return dwtExcess(state, cargoes, fixed).excess;
+    }
+
     // ── Optimise ────────────────────────────────────────────────────────────
     function optimize(state, opts) {
         const only = opts && opts.only;
@@ -235,20 +271,29 @@
             lockedMass[c.id] = (lockedMass[c.id] || 0) + mass;
         });
         const conflict = conflictFn(state);
+        const cargoes = state.cargoes.filter(c => !only || only.includes(c.id)).map(c => {
+            const p = prep(state, c);
+            return Object.assign({ id: c.id, need: Math.max(0, c.qty - (lockedMass[c.id] || 0)), strategy: c.strategy, mpm: p.mpm }, p);
+        });
+        // opts.fitDwt: scale every parcel down by the same factor so the plan stays within deadweight
+        const over = dwtExcess(state, cargoes, fixed);
+        if (opts && opts.fitDwt && over.excess > 0) {
+            const f = over.room / over.total;
+            cargoes.forEach(c => { c.need *= f; });
+        }
         const input = {
             tanks: CARGO_TANKS,
-            cargoes: state.cargoes.filter(c => !only || only.includes(c.id)).map(c => {
-                const p = prep(state, c);
-                return Object.assign({ id: c.id, need: Math.max(0, c.qty - (lockedMass[c.id] || 0)), strategy: c.strategy, mpm: p.mpm }, p);
-            }),
+            cargoes,
             conflict: (a, b) => !!conflict(a, b),
             fixed,
+            baseImb: ballastImbalance(state),
             listLimit: state.settings.listLimit,
             listAllowance: state.settings.listLimit + ballastRoom(state),
             slackPct: state.settings.slackPct,
             timeMs: (opts && opts.timeMs) || 1500
         };
         const res = Optimizer.run(input);
+        res.dwtCut = opts && opts.fitDwt ? over.excess : 0;
         const plan = {};
         Object.entries(state.plan).forEach(([tid, e]) => { if (isFixed(e)) plan[tid] = e; });
         Object.entries(res.assignments).forEach(([cid, list]) => {
@@ -299,7 +344,10 @@
             const rest = absorb(state, c, tankId, -delta);
             if (Math.abs(rest) > 0.05) {
                 const mt = Math.abs(rest) * prep(state, c).mpm;
-                msg += (msg ? ' · ' : '') + (rest < 0 ? `Other tanks of ${c.name} empty — total +${mt.toFixed(1)} t` : `Other tanks full — ${mt.toFixed(1)} t could not be redistributed`);
+                const hasOthers = Object.entries(state.plan).some(([tid, o]) => tid !== tankId && o.cargoId === c.id && !o.locked);
+                const why = !hasOthers ? `${c.name} has no other unlocked tank —`
+                    : rest < 0 ? `Other tanks of ${c.name} empty —` : 'Other tanks full —';
+                msg += (msg ? ' · ' : '') + `${why} parcel total ${rest < 0 ? '+' : '−'}${mt.toFixed(1)} t`;
             }
         }
         return { ok: true, msg };
@@ -404,6 +452,7 @@
     /** Swap contents of two tanks (drag tank → tank). Volumes are capped to the new limits. */
     function swapTanks(state, a, b, rebalance) {
         const ea = state.plan[a], eb = state.plan[b];
+        if ((ea && ea.locked) || (eb && eb.locked)) return { ok: false, msg: 'Tank is locked — unlock it first' };
         delete state.plan[a]; delete state.plan[b];
         const notes = [];
         const place = (tid, e) => {
@@ -423,7 +472,7 @@
     }
 
     global.Planner = {
-        newState, defaultSettings, prep, summarize, optimize, dwtLimit, zoneName,
+        newState, defaultSettings, prep, summarize, optimize, optimizeDwtExcess, dwtLimit, zoneName,
         setTankVolume, setTankMass, setTankPct, assignTank, evenOut, maximize, swapTanks, plannedMass, cargoById
     };
 })(typeof window !== 'undefined' ? window : globalThis);
