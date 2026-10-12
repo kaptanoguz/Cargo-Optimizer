@@ -167,5 +167,33 @@ s.cargoes.push(parcel('Methanol', 100));
 r = Planner.optimize(s);
 ok(r.slack === 0, `100 t methanol, slack threshold 0 % → slack penalty ${r.slack}`);
 
+console.log('Uneven ballast is counted in the list the optimiser balances');
+s = Planner.newState();
+['WBT2P', 'WBT3P', 'WBT4P'].forEach(id => { s.ballast[id] = 100; });
+s.cargoes.push(parcel('Methanol', 2000));
+r = Planner.optimize(s);
+sum = Planner.summarize(s);
+ok(Math.abs(sum.totals.list) < Math.abs(r.imb) + 1 && Math.abs(sum.totals.list) <= s.settings.listLimit,
+    `port ballast 760 t → plan list ${sum.totals.list.toFixed(0)} t incl. ballast (${plan(s)})`);
+
+console.log('Optimise within deadweight only on request');
+s = Planner.newState();
+s.cargoes.push(parcel('Monoethylene Glycol (MEG)', 3000), parcel('Glycerine', 2900));
+const excess = Planner.optimizeDwtExcess(s);
+ok(excess > 0, `5900 t MEG + glycerine → ${excess.toFixed(1)} t over deadweight`);
+Planner.optimize(s);
+ok(Planner.summarize(s).totals.margin < -1, 'without fitDwt the full nomination is stowed');
+r = Planner.optimize(s, { fitDwt: true });
+sum = Planner.summarize(s);
+ok(Math.abs(sum.totals.margin) < 1 && near(r.dwtCut, excess, 0.01), `fitDwt: margin ${sum.totals.margin.toFixed(2)} t, cut ${r.dwtCut.toFixed(1)} t`);
+
+console.log('Locked tanks cannot be swapped');
+s = Planner.newState();
+s.cargoes.push(parcel('Methanol', 500));
+Planner.optimize(s);
+const lockedId = Object.keys(s.plan)[0];
+s.plan[lockedId].locked = true;
+ok(!Planner.swapTanks(s, lockedId, 'COT1P' === lockedId ? 'COT2P' : 'COT1P').ok && s.plan[lockedId].locked, `swap from locked ${lockedId} refused`);
+
 console.log(failed ? `\n${failed} FAILED` : '\nAll tests passed');
 process.exit(failed ? 1 : 0);

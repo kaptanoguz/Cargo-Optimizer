@@ -925,11 +925,16 @@
         $('#dwtRestrict').addEventListener('change', e => commit(() => { state.voyage.dwtRestrict = num(e.target.value); }));
         $('#btnOptimize').addEventListener('click', () => {
             if (!state.cargoes.length) { toast('Add parcels first', 'warn'); return; }
-            const res = commit(() => Planner.optimize(state));
+            const excess = Planner.optimizeDwtExcess(state);
+            const fitDwt = excess > 0.05 && confirm(`Nominated cargo exceeds the ${Planner.zoneName(state.voyage.zone)} deadweight by ${fmt(excess, 1)} t ` +
+                `(after bunkers, constant and ballast).\n\nOK — scale all parcels down proportionally to fit the deadweight.\nCancel — stow the full nominations (DWT will be exceeded).`);
+            const res = commit(() => Planner.optimize(state, { fitDwt }));
             const s2 = Planner.summarize(state);
             const unpl = Object.entries(res.unplaced || {}).filter(([, v]) => v > 0.05);
             if (unpl.length) toast(`Could not stow: ${unpl.map(([id, v]) => `${Planner.cargoById(state, +id).name} ${fmt(v, 1)} t`).join(', ')} — reduce quantity, unlock tanks or allow slops`, 'danger');
-            else toast(`Optimised: ${fmt(s2.totals.cargoMass, 1)} t in ${s2.totals.tanksUsed} tanks · list Δ ${fmt(Math.abs(s2.totals.list), 1)} t · ${res.ms} ms`, 'ok');
+            else toast(`Optimised: ${fmt(s2.totals.cargoMass, 1)} t in ${s2.totals.tanksUsed} tanks · list Δ ${fmt(Math.abs(s2.totals.list), 1)} t · ${res.ms} ms${res.timedOut ? ' · time limit reached, plan may not be the best possible' : ''}`, 'ok');
+            if (res.dwtCut > 0.05) toast(`Scaled down by ${fmt(res.dwtCut, 1)} t to stay within deadweight — parcels show as short of nomination`, 'warn');
+            else if (s2.totals.margin < -0.05) toast(`Deadweight exceeded by ${fmt(-s2.totals.margin, 1)} t`, 'danger');
         });
         $('#btnUndo').addEventListener('click', undo);
         $('#btnRedo').addEventListener('click', redo);
