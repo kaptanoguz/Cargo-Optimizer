@@ -1,8 +1,10 @@
 {
-  "name": "ada-translate",
+  "name": "cargo-optimizer",
   "private": true,
   "version": "1.0.0",
   "scripts": {
+    "build:web": "node scripts/build-web.js",
+    "test": "node tests/run-tests.js",
     "tauri": "tauri"
   },
   "devDependencies": {

@@ -39,16 +39,49 @@
     function readJson(key) { try { return JSON.parse(localStorage.getItem(key)); } catch (e) { return null; } }
     function writeJson(key, v) { try { localStorage.setItem(key, JSON.stringify(v)); } catch (e) { /* private mode */ } }
 
+    // Plan files come from outside (shared between ships / offices). Several cargo fields are
+    // written into HTML unescaped, so anything that is not of the expected type is dropped.
+    const HEX_COLOR = /^#[0-9a-f]{6}$/i;
+    const finiteOrNull = v => Number.isFinite(v) ? v : null;
+    function sanitizeCargo(c, i) {
+        const out = Object.assign({}, c, {
+            color: HEX_COLOR.test(c.color) ? c.color : PALETTE[i % PALETTE.length],
+            name: String(c.name ?? ''),
+            qty: Number.isFinite(c.qty) ? c.qty : 0,
+            ref: Number.isFinite(c.ref) ? c.ref : 15,
+            g: ['C', 'P', 'V'].includes(c.g) ? c.g : 'C',
+            pc: typeof c.pc === 'string' ? c.pc : '',
+            f: typeof c.f === 'string' ? c.f : '',
+            st: Number.isFinite(c.st) ? c.st : 0
+        });
+        ['rg', 'beta', 'maxT', 'minT', 'loadT', 'voyT'].forEach(k => { out[k] = finiteOrNull(c[k]); });
+        out.heat = Array.isArray(c.heat) && c.heat.length === 2 && c.heat.every(Number.isFinite) ? c.heat.slice() : null;
+        return out;
+    }
+
+    /** Copy `src` over `base`, keeping a key only when its type matches the default's. */
+    function typedAssign(base, src) {
+        Object.keys(base).forEach(k => {
+            const v = src && src[k];
+            if (v == null) return;
+            if (typeof base[k] === 'number') { const x = num(v); if (x != null) base[k] = x; }
+            else if (typeof v === typeof base[k]) base[k] = v;
+        });
+        return base;
+    }
+
     function migrate(s) {
         const base = Planner.newState();
         if (!s || typeof s !== 'object' || !Array.isArray(s.cargoes)) return base;
+        const cargoes = s.cargoes.filter(c => c && Number.isFinite(c.id) && Number.isFinite(c.sg)).map(sanitizeCargo);
+        const ids = new Set(cargoes.map(c => c.id));
         return {
             version: 2,
             voyage: Object.assign(base.voyage, s.voyage),
-            settings: Object.assign(base.settings, s.settings),
-            cargoes: s.cargoes.filter(c => c && Number.isFinite(c.id) && Number.isFinite(c.sg)),
-            plan: Object.fromEntries(Object.entries(s.plan || {}).filter(([k, e]) => TANK_BY_ID[k] && e && Number.isFinite(e.vol))),
-            weights: Object.assign(base.weights, s.weights),
+            settings: typedAssign(base.settings, s.settings),
+            cargoes,
+            plan: Object.fromEntries(Object.entries(s.plan || {}).filter(([k, e]) => TANK_BY_ID[k] && e && Number.isFinite(e.vol) && ids.has(e.cargoId))),
+            weights: typedAssign(base.weights, s.weights),
             ballast: Object.assign(base.ballast, s.ballast)
         };
     }

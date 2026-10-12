@@ -71,7 +71,7 @@
     }
 
     function buildCandidates(cargo, tanks, slackPct) {
-        const thr = slackPct || DEFAULT_SLACK_PCT;
+        const thr = slackPct ?? DEFAULT_SLACK_PCT;
         const n = tanks.length;
         const full = (1 << n) - 1;
         const need = cargo.need;
@@ -139,8 +139,8 @@
         const t0 = Date.now();
         const tanks = input.tanks;
         const timeMs = input.timeMs || 1200;
-        const listLimit = input.listAllowance || input.listLimit || 150;
-        const slackPct = input.slackPct || DEFAULT_SLACK_PCT;
+        const listLimit = input.listAllowance ?? input.listLimit ?? 150;
+        const slackPct = input.slackPct ?? DEFAULT_SLACK_PCT;
         // Most-constrained parcel first: number of incompatible partners, then volume.
         const live = input.cargoes.filter(c => c.need > 0.01);
         const degree = c => live.filter(o => o !== c && input.conflict(c.id, o.id)).length +

@@ -159,5 +159,13 @@ const emptyM3 = sum.tanks.filter(x => x.c).reduce((a2, x) => a2 + x.maxVol - x.v
 ok(sum.totals.tanksUsed === 8 && emptyM3 < 660, `8 tanks, ${emptyM3.toFixed(0)} m³ empty (pairs-only would leave 1054) — ${plan(s)} [pass: ${r.pass}]`);
 ok(r.stage < 1300, `worst load/discharge-stage list ${r.stage.toFixed(0)} t (no grade all on one side)`);
 
+console.log('Slack threshold 0 % switches the slack penalty off');
+s = Planner.newState();
+s.settings.slackPct = 0;
+s.settings.allowSlops = false;
+s.cargoes.push(parcel('Methanol', 100));
+r = Planner.optimize(s);
+ok(r.slack === 0, `100 t methanol, slack threshold 0 % → slack penalty ${r.slack}`);
+
 console.log(failed ? `\n${failed} FAILED` : '\nAll tests passed');
 process.exit(failed ? 1 : 0);
