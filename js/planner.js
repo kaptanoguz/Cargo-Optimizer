@@ -160,6 +160,8 @@
                 seen.add(key);
                 const cf = conflict(r.c.id, o.c.id);
                 if (cf) out.push({ level: 'danger', code: cf.code === 'HEAT' ? 'Heat transfer' : 'Segregation', msg: `${r.t.short} ↔ ${o.t.short}: ${cf.msg}`, tanks: [r.t.id, nid] });
+                const ca = !cf && Compat.pairCaution(r.c, o.c);
+                if (ca) out.push({ level: 'warn', code: 'Check exceptions', msg: `${r.t.short} ↔ ${o.t.short}: ${ca.msg}`, tanks: [r.t.id, nid] });
             });
             if (r.over) out.push({ level: 'danger', code: 'Overfill', msg: `${r.t.name} ${r.pct.toFixed(1)} % exceeds the ${r.limitPct.toFixed(1)} % limit for ${r.c.name}`, tanks: [r.t.id] });
         });

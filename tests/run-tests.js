@@ -195,5 +195,13 @@ const lockedId = Object.keys(s.plan)[0];
 s.plan[lockedId].locked = true;
 ok(!Planner.swapTanks(s, lockedId, 'COT1P' === lockedId ? 'COT2P' : 'COT1P').ok && s.plan[lockedId].locked, `swap from locked ${lockedId} refused`);
 
+console.log('USCG chart (46 CFR 150 Fig.1) spot checks');
+const g = (a, b) => Compat.groupsIncompatible(a, b);
+ok(g(1, 2) && g(2, 3) && g(5, 20) && g(7, 22) && g(8, 14) && g(5, 42) && g(22, 35), 'chart × / ⓧ pairs incompatible (1-2, 2-3, 5-20, 7-22, 8-14, 5-42, 22-35)');
+ok(!g(1, 15) && !g(3, 4) && !g(6, 21) && !g(2, 42), 'empty chart cells compatible (1-15, 3-4, 6-21, 2-42)');
+const cs = parcel('Caustic Soda (50%)', 100), meoh = parcel('Methanol', 100);
+ok(/exceptions/.test((Compat.pairConflict(cs, meoh) || {}).msg || ''), 'caustic ⨯ methanol flagged, exceptions mentioned');
+ok(!Compat.pairConflict({ id: 1, rg: 20 }, { id: 2, rg: 21 }) && Compat.pairCaution({ id: 1, rg: 20, name: 'a' }, { id: 2, rg: 21, name: 'b' }), 'alcohol / phenol: compatible with exceptions → caution only');
+
 console.log(failed ? `\n${failed} FAILED` : '\nAll tests passed');
 process.exit(failed ? 1 : 0);

@@ -18,7 +18,7 @@ Algoritma: her parsel için "minimal yeterli" tank alt kümeleri (12 tank → 40
 - **Yoğunluk/VCF**: petrol ürünleri ASTM Table 54B, luboil / base oil ASTM Table 54D (15 °C), kimyasal/bitkisel yağlar ürün genleşme katsayısı β. Yöntem formda elle değiştirilebilir.
 - **Doldurma limiti** = min(98 % × ρ(seferdeki max sıcaklık) / ρ(yükleme sıcaklığı), 98 % × 1.54 / ρ).
 - **Ağırlık**: vakumda veya havada (WCF −0.0011).
-- **Uyumluluk**: USCG 46 CFR 150 reaktif grupları (muhafazakâr alt küme) + ısıya duyarlı ürünlerin ısıtılan yüke komşuluğu (stiren, VAM, akrilonitril…).
+- **Uyumluluk**: USCG 46 CFR 150 Figure 1 reaktif grup tablosu (istisnalı çiftler uyarı olarak gösterilir) + ısıya duyarlı ürünlerin ısıtılan yüke komşuluğu (stiren, VAM, akrilonitril…).
 - **DWT**: T/S/W yükleme hattı bölgesi elle seçilir, isteğe bağlı draft kısıtlı DWT.
 
 ## Manuel düzenleme
