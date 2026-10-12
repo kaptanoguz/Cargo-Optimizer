@@ -27,6 +27,7 @@ Algoritma: her parsel için "minimal yeterli" tank alt kümeleri (12 tank → 40
 - Tank tablosundaki her hücre düzenlenebilir; parsel seçimi açılır listeden.
 - Parseli tanka sürükle-bırak; tankı tanka sürükleyerek taşı/takas et.
 - Tank kilidi: Optimise kilitli tankları korur. Yeni parsel eklemek mevcut planı bozmaz (yalnızca boş tanklara istiflenir).
+- **DWT**: nominasyonlar deadweight'i aşarsa Optimise uyarır ve tüm parselleri orantılı küçültmek için onay ister (Cancel → tam nominasyon, DWT aşımı uyarısıyla). Optimizer mevcut balastın P/S dengesizliğini de hesaba katar.
 - Geri al / yinele (Ctrl+Z / Ctrl+Y), otomatik kayıt, JSON kaydet/aç, CSV, A4 yatay yazdırma (imza blokları).
 
 ## Temalar
@@ -34,7 +35,11 @@ Chart (kâğıt, varsayılan) · Bridge (koyu) · Night (kırmızı, gece görü
 
 ## Test
 ```bash
-node tests/run-tests.js
+npm test          # hesap / optimizer testleri (Node)
+npm run test:ui   # tarayıcı duman testi (yüklü Chrome; ya da CHROMIUM_PATH=/yol/chromium)
 ```
+
+## Masaüstü sürüm (Tauri)
+`npm run tauri build` — `dist-web/` her derlemede `index.html`, `css/`, `js/` dosyalarından yeniden üretilir (`npm run build:web`); elle düzenlemeyin.
 
 > Düzenleyici veriler planlama yardımcısıdır; geminin Certificate of Fitness'ı, güncel IBC Code Ch.17/18, USCG tablosu ve kiracı/yükleyici talimatları esastır.

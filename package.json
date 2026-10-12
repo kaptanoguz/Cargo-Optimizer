@@ -5,9 +5,11 @@
   "scripts": {
     "build:web": "node scripts/build-web.js",
     "test": "node tests/run-tests.js",
-    "tauri": "tauri"
+    "tauri": "tauri",
+    "test:ui": "node tests/ui-smoke.js"
   },
   "devDependencies": {
-    "@tauri-apps/cli": "^2.11.4"
+    "@tauri-apps/cli": "^2.11.4",
+    "playwright-core": "^1.64.0"
   }
 }
