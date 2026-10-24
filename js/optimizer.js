@@ -30,6 +30,9 @@
     // List up to `listAllowance` (limit + ballast on the light side) is cheap; beyond that it is near-hard.
     // WASTE: per m³ left empty (up to the fill limit) in tanks that hold cargo — tight fit.
     const DEFAULT_SLACK_PCT = 65;
+    // Search width: children tried per parcel at depth 0–1, 2–3, 4+, and candidates kept per ordering.
+    // input.search overrides it (the C++ engine's deep search uses a wider tree).
+    const SEARCH = { branch: [24, 12, 8], cands: 400 };
     const EPS = 1e-6;
 
     function bitCount(m) { let c = 0; while (m) { m &= m - 1; c++; } return c; }
@@ -70,7 +73,7 @@
         return d;
     }
 
-    function buildCandidates(cargo, tanks, slackPct) {
+    function buildCandidates(cargo, tanks, slackPct, keep) {
         const thr = slackPct ?? DEFAULT_SLACK_PCT;
         const n = tanks.length;
         const full = (1 << n) - 1;
@@ -121,8 +124,8 @@
 
         const all = [...cands.values()];
         const head = (a, b) => (a.count - b.count) || (a.slops - b.slops) || (a.slack - b.slack);
-        const byWaste = all.slice().sort((a, b) => head(a, b) || (a.waste - b.waste) || (a.unpaired - b.unpaired) || (Math.abs(a.imb) - Math.abs(b.imb))).slice(0, 400);
-        const byPairs = all.slice().sort((a, b) => head(a, b) || (a.unpaired - b.unpaired) || (Math.abs(a.imb) - Math.abs(b.imb)) || (a.waste - b.waste)).slice(0, 400);
+        const byWaste = all.slice().sort((a, b) => head(a, b) || (a.waste - b.waste) || (a.unpaired - b.unpaired) || (Math.abs(a.imb) - Math.abs(b.imb))).slice(0, keep || SEARCH.cands);
+        const byPairs = all.slice().sort((a, b) => head(a, b) || (a.unpaired - b.unpaired) || (Math.abs(a.imb) - Math.abs(b.imb)) || (a.waste - b.waste)).slice(0, keep || SEARCH.cands);
         return { list: byWaste, lists: { waste: byWaste, pairs: byPairs }, minCount: Number.isFinite(minCount) ? minCount : bitCount(allowed), cap };
     }
 
@@ -142,6 +145,7 @@
         const timeMs = input.timeMs || 1200;
         const listLimit = input.listAllowance ?? input.listLimit ?? 150;
         const slackPct = input.slackPct ?? DEFAULT_SLACK_PCT;
+        const search = Object.assign({}, SEARCH, input.search);
         // Most-constrained parcel first: number of incompatible partners, then volume.
         const live = input.cargoes.filter(c => c.need > 0.01);
         const degree = c => live.filter(o => o !== c && input.conflict(c.id, o.id)).length +
@@ -165,7 +169,7 @@
         // Static forbidden masks from locked tanks
         const neighborsOf = (mask) => bitsOf(mask).reduce((acc, i) => acc | tanks[i].neighborMask, 0);
         cargoes.forEach(c => {
-            c.cand = buildCandidates(c, tanks, slackPct);
+            c.cand = buildCandidates(c, tanks, slackPct, search.cands);
             c.forbidFixed = 0;
             (input.fixed || []).forEach(f => {
                 if (input.conflict(c.id, f.cargoId)) c.forbidFixed |= tanks[f.idx].neighborMask;
@@ -242,7 +246,7 @@
             if (best && bound >= best.score) return;
             const c = cargoes[k];
             const blocked = blockedFor(k, k, used, placedMasks);
-            const branchLimit = k < 2 ? 24 : (k < 4 ? 12 : 8);
+            const branchLimit = search.branch[k < 2 ? 0 : (k < 4 ? 1 : 2)];
             let tried = 0;
             for (const cand of c.cand.list) {
                 if (cand.mask & blocked) continue;
@@ -300,5 +304,5 @@
         return result;
     }
 
-    global.Optimizer = { run, distribute, buildCandidates, bitsOf, bitCount, W, DEFAULT_SLACK_PCT };
+    global.Optimizer = { run, distribute, buildCandidates, bitsOf, bitCount, W, DEFAULT_SLACK_PCT, SEARCH };
 })(typeof window !== 'undefined' ? window : globalThis);

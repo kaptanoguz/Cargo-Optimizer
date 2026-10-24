@@ -177,6 +177,8 @@
                 <div class="f"><label for="sMaxFill">Max fill %</label><input id="sMaxFill" class="inp num" type="number" step="0.5" min="80" max="98"></div>
                 <div class="f"><label for="sSgLim">SG allowed at max fill</label><input id="sSgLim" class="inp num" type="number" step="0.01" min="1" max="2"></div>
                 <div class="f"><label for="sSlack" title="Optimiser avoids tanks filled below this % (free-surface effect, sloshing). One tank at 70 % is preferred over two at 35 %.">Avoid slack tanks below %</label><input id="sSlack" class="inp num" type="number" step="5" min="0" max="95"></div>
+                <div class="f"><label for="sEngine" title="C++ engine compiled to WebAssembly. Standard search gives exactly the JavaScript plan, faster; deep search tries a wider tree and finds better plans with many parcels.">Optimiser engine</label>
+                    <select id="sEngine" class="inp"><option value="cpp">C++ — deep search</option><option value="cpp-std">C++ — standard search</option><option value="js">JavaScript</option></select></div>
                 <label class="toggle"><input type="checkbox" id="sSlops"><span></span>Use slop tanks for cargo</label>
             </div>
             <p class="muted small">Filling limit per parcel = lower of 98 % × ρ(max passage temp) / ρ(load temp) and 98 % × 1.54 / ρ. Compatibility uses the USCG 46 CFR 150 Figure 1 chart by reactive group; pairs with listed exceptions are flagged for checking — always verify with the ship's Certificate of Fitness, the IBC Code and charterer's instructions.</p>
@@ -197,6 +199,8 @@
 <script src="js/physics.js"></script>
 <script src="js/compat.js"></script>
 <script src="js/optimizer.js"></script>
+<script src="js/engine-wasm.js"></script>
+<script src="js/engine.js"></script>
 <script src="js/planner.js"></script>
 <script src="js/app.js"></script>
 </body>

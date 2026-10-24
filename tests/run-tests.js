@@ -3,10 +3,10 @@ const fs = require('fs');
 const path = require('path');
 const vm = require('vm');
 
-const ctx = { console, Date, Math, Number, Object, Array, Map, Set, Float64Array, JSON };
+const ctx = { console, Date, Math, Number, Object, Array, Map, Set, Float64Array, Uint8Array, JSON, WebAssembly, atob, Promise, String, Error };
 ctx.globalThis = ctx;
 vm.createContext(ctx);
-['vessel', 'cargo-db', 'physics', 'compat', 'optimizer', 'planner'].forEach(f =>
+['vessel', 'cargo-db', 'physics', 'compat', 'optimizer', 'engine-wasm', 'engine', 'planner'].forEach(f =>
     vm.runInContext(fs.readFileSync(path.join(__dirname, '..', 'js', f + '.js'), 'utf8'), ctx, { filename: f + '.js' }));
 
 const { Planner, Physics, Compat, CARGO_BY_NAME, CARGO_TANKS } = ctx;

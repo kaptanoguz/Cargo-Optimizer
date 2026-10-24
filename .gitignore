@@ -12,3 +12,4 @@ src-tauri/target/
 *.deb
 .env
 dist-web/
+build/

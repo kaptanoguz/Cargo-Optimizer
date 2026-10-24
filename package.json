@@ -1,10 +1,11 @@
 {
   "name": "cargo-optimizer",
   "private": true,
-  "version": "1.0.0",
+  "version": "2.0.0",
   "scripts": {
     "build:web": "node scripts/build-web.js",
-    "test": "node tests/run-tests.js",
+    "build:engine": "node scripts/build-engine.js",
+    "test": "node tests/run-tests.js && node tests/engine-parity.js",
     "tauri": "tauri",
     "test:ui": "node tests/ui-smoke.js"
   },

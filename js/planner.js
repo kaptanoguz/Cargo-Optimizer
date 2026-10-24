@@ -14,7 +14,7 @@
 
     function defaultSettings() {
         return {
-            basis: 'vac', allowSlops: true, listLimit: 150, rebalance: true, slackPct: 65,
+            basis: 'vac', allowSlops: true, listLimit: 150, rebalance: true, slackPct: 65, engine: 'cpp',
             maxFillPct: VESSEL.maxFillPct, maxSgAtMaxFill: VESSEL.maxSgAtMaxFill, theme: 'auto'
         };
     }
@@ -254,7 +254,18 @@
     }
 
     // ── Optimise ────────────────────────────────────────────────────────────
-    function optimize(state, opts) {
+    // settings.engine: 'cpp' C++ engine, deep search (default) · 'cpp-std' C++ engine, the JavaScript
+    // search width (same plans, faster) · 'js' JavaScript optimiser.
+    const ENGINES = { cpp: 'C++ deep search', 'cpp-std': 'C++ standard search', js: 'JavaScript' };
+
+    /** The search engine for `settings.engine`: the C++ (WebAssembly) engine when chosen and loaded, else JavaScript. */
+    function engineFor(settings) {
+        const E = global.Engine;
+        return settings.engine !== 'js' && E && E.ready ? E : Optimizer;
+    }
+
+    /** Optimizer.run input for the current state (locked / not re-stowed tanks fixed). */
+    function optimizerInput(state, opts) {
         const only = opts && opts.only;
         // Locked tanks — and, when re-stowing selected parcels only, every other parcel's tanks — are fixed.
         const isFixed = e => e.locked || (only && !only.includes(e.cargoId));
@@ -292,7 +303,16 @@
             slackPct: state.settings.slackPct,
             timeMs: (opts && opts.timeMs) || 1500
         };
-        const res = Optimizer.run(input);
+        return { input, isFixed, over };
+    }
+
+    function optimize(state, opts) {
+        const { input, isFixed, over } = optimizerInput(state, opts);
+        const engine = engineFor(state.settings);
+        if (engine !== Optimizer && state.settings.engine !== 'cpp-std') input.search = global.Engine.DEEP;
+        const res = engine.run(input);
+        res.engine = engine === Optimizer ? 'js' : state.settings.engine === 'cpp-std' ? 'cpp-std' : 'cpp';
+        res.engineFallback = engine === Optimizer && state.settings.engine !== 'js';
         res.dwtCut = opts && opts.fitDwt ? over.excess : 0;
         const plan = {};
         Object.entries(state.plan).forEach(([tid, e]) => { if (isFixed(e)) plan[tid] = e; });
@@ -472,7 +492,7 @@
     }
 
     global.Planner = {
-        newState, defaultSettings, prep, summarize, optimize, optimizeDwtExcess, dwtLimit, zoneName,
+        newState, defaultSettings, prep, summarize, optimize, optimizerInput, engineFor, ENGINES, optimizeDwtExcess, dwtLimit, zoneName,
         setTankVolume, setTankMass, setTankPct, assignTank, evenOut, maximize, swapTanks, plannedMass, cargoById
     };
 })(typeof window !== 'undefined' ? window : globalThis);

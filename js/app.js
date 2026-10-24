@@ -872,6 +872,7 @@
         $('#sSgLim').value = s.maxSgAtMaxFill;
         $('#sSlops').checked = !!s.allowSlops;
         $('#sSlack').value = s.slackPct;
+        $('#sEngine').value = Planner.ENGINES[s.engine] ? s.engine : 'cpp';
         $('#themeGrid').innerHTML = THEMES.map(t => `<button type="button" class="theme-opt ${ui.theme === t.id ? 'on' : ''}" data-theme-id="${t.id}"><i style="background:${t.sw}"></i>${t.label}</button>`).join('');
         $('#settingsDlg').showModal();
     }
@@ -932,7 +933,8 @@
             const s2 = Planner.summarize(state);
             const unpl = Object.entries(res.unplaced || {}).filter(([, v]) => v > 0.05);
             if (unpl.length) toast(`Could not stow: ${unpl.map(([id, v]) => `${Planner.cargoById(state, +id).name} ${fmt(v, 1)} t`).join(', ')} — reduce quantity, unlock tanks or allow slops`, 'danger');
-            else toast(`Optimised: ${fmt(s2.totals.cargoMass, 1)} t in ${s2.totals.tanksUsed} tanks · list Δ ${fmt(Math.abs(s2.totals.list), 1)} t · ${res.ms} ms${res.timedOut ? ' · time limit reached, plan may not be the best possible' : ''}`, 'ok');
+            else toast(`Optimised: ${fmt(s2.totals.cargoMass, 1)} t in ${s2.totals.tanksUsed} tanks · list Δ ${fmt(Math.abs(s2.totals.list), 1)} t · ${res.ms} ms (${Planner.ENGINES[res.engine]})${res.timedOut ? ' · time limit reached, plan may not be the best possible' : ''}`, 'ok');
+            if (res.engineFallback) toast(`C++ engine unavailable${window.Engine && Engine.error ? ` (${Engine.error})` : ''} — used the JavaScript optimiser`, 'warn');
             if (res.dwtCut > 0.05) toast(`Scaled down by ${fmt(res.dwtCut, 1)} t to stay within deadweight — parcels show as short of nomination`, 'warn');
             else if (s2.totals.margin < -0.05) toast(`Deadweight exceeded by ${fmt(-s2.totals.margin, 1)} t`, 'danger');
         });
@@ -971,6 +973,7 @@
         $('#sSgLim').addEventListener('change', e => setS('maxSgAtMaxFill', Math.min(2.5, Math.max(0.8, num(e.target.value) ?? 1.54))));
         $('#sSlops').addEventListener('change', e => setS('allowSlops', e.target.checked));
         $('#sSlack').addEventListener('change', e => setS('slackPct', Math.min(95, Math.max(0, num(e.target.value) ?? 65))));
+        $('#sEngine').addEventListener('change', e => setS('engine', Planner.ENGINES[e.target.value] ? e.target.value : 'cpp'));
         $('#btnResetAll').addEventListener('click', () => {
             if (!confirm('Clear all parcels, the plan and weights? (You can undo.)')) return;
             commit(() => { const theme = state.settings; state = Planner.newState(); state.settings = theme; });

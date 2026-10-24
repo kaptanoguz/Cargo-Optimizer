@@ -41,6 +41,8 @@ async function addParcel(page, name, qty) {
     let st = await stored();
     ok(st && Object.keys(st.plan).length > 0, `plan stored with ${st ? Object.keys(st.plan).length : 0} tanks`);
     ok(dialogs.length === 0, 'no deadweight prompt when the cargo fits');
+    ok(await page.evaluate(() => window.Engine && Engine.ready), 'C++ engine (WebAssembly) loaded from file://');
+    ok(/C\+\+ deep search/.test(await page.locator('#toasts').innerText()), 'plan made by the C++ deep search');
 
     console.log('Save and reopen');
     const [download] = await Promise.all([page.waitForEvent('download'), page.click('#btnSave')]);
