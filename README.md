@@ -14,6 +14,15 @@ Sert kısıtlar: tank başına tek parsel, parsel bazlı doldurma limiti, uyumsu
 
 Algoritma: her parsel için "minimal yeterli" tank alt kümeleri (12 tank → 4096 alt küme, kapasite DP) + P/S simetrik kapanışları; en kısıtlı parsel önce, kapasite alt sınırlı branch & bound. Tipik süre 10–800 ms.
 
+## C++ hesap motoru (v2)
+Yerleştirme araması ve her denemede yapılan puanlama (P/S moment, yükleme/tahliye aşaması meyli, slack, boş hacim) `engine/stowage.cpp` içinde C++ olarak yazıldı; WebAssembly'ye derlenip `js/engine-wasm.js` içine gömülü gelir, yani uygulama yine `index.html` açılarak, internetsiz çalışır. Arayüz, fizik (VCF, doldurma limiti) ve uyumluluk JavaScript'te kaldı.
+
+- **Settings → Optimiser engine**: *C++ — deep search* (varsayılan, iki kat geniş arama), *C++ — standard search* (JS ile birebir aynı plan, ~25–40× hızlı), *JavaScript* (önceki motor).
+- WebAssembly yüklenemezse planlayıcı otomatik olarak JavaScript motoruna döner ve uyarır.
+- **Tutarlılık**: C++ motoru JS ile aynı işlem sırasıyla, FMA kapalı (`-ffp-contract=off`) derlenir; standart aramada JS, WebAssembly ve yerel derleme aynı planı ve puanı bit bit aynı verir (`tests/engine-parity.js`).
+- **Yerel derleme** (gemi bilgisayarı, komut satırı): `npm run build:engine -- --native` → `build/stowage` (girdi/çıktı biçimi `engine/stowage.cpp` başında).
+- Motoru değiştirdikten sonra: `npm run build:engine` (clang + lld gerekir: `sudo apt install clang lld`). `js/optimizer.js` ile `engine/stowage.cpp` aynı algoritmadır; birinde yapılan değişiklik diğerine de yapılmalı.
+
 ## Hesaplar
 - **Yoğunluk/VCF**: petrol ürünleri ASTM Table 54B, luboil / base oil ASTM Table 54D (15 °C), kimyasal/bitkisel yağlar ürün genleşme katsayısı β. Yöntem formda elle değiştirilebilir.
 - **Doldurma limiti** = min(98 % × ρ(seferdeki max sıcaklık) / ρ(yükleme sıcaklığı), 98 % × 1.54 / ρ).
@@ -35,7 +44,7 @@ Chart (kâğıt, varsayılan) · Bridge (koyu) · Night (kırmızı, gece görü
 
 ## Test
 ```bash
-npm test          # hesap / optimizer testleri (Node)
+npm test          # hesap / optimizer testleri + C++/JS eşitlik testi (Node)
 npm run test:ui   # tarayıcı duman testi (yüklü Chrome; ya da CHROMIUM_PATH=/yol/chromium)
 ```
 
