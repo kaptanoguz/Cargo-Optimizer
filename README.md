@@ -3,6 +3,10 @@
 M/T X (IMO 9000001, IBC ship type 2, 12 cargo tanks) için kimyasal tanker stowage planlayıcısı.
 Kurulum gerekmez, internet gerekmez: `index.html` dosyasını tarayıcıda açın.
 
+*Offline chemical tanker stowage planner and cargo optimiser: IBC Code ship type and segregation checks, filling limits, list / trim and deadweight, with a C++ (WebAssembly) search engine. Runs in the browser, no install.*
+
+![Cargo Optimizer: dört parsel (metanol, MEG, stiren, palm yağı) 8 tanka yerleştirilmiş, meyil ve kontroller temiz](docs/screenshots/stowage-plan.png)
+
 ## Optimizasyon hedefi (öncelik sırasıyla)
 1. **Maksimum yük** yerleştir (sığmayan her ton en ağır ceza).
 2. **Minimum tank** kullan; kullanılan tanklarda **minimum boş hacim** bırak (best-fit).
